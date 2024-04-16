@@ -2,15 +2,15 @@ package com.driver.services.impl;
 
 import com.driver.model.*;
 import com.driver.services.CustomerService;
+import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.driver.repository.CustomerRepository;
 import com.driver.repository.DriverRepository;
 import com.driver.repository.TripBookingRepository;
 
-import java.util.List;
+import java.util.*;
 
 @Service
 public class CustomerServiceImpl implements CustomerService {
@@ -33,28 +33,7 @@ public class CustomerServiceImpl implements CustomerService {
 	@Override
 	public void deleteCustomer(Integer customerId) {
 		// Delete customer without using deleteById function
-		Customer customer = customerRepository2.findById(customerId).get();
-		List<TripBooking> bookedTrips = customer.getTripBookingList();
-
-		//Now we will set the cab as available for each and every trip booked by this customer,
-		//who is going to be deleted
-
-		for(TripBooking trip : bookedTrips){
-			Driver driver = trip.getDriver();
-			Cab cab = driver.getCab();
-			cab.setAvailable(true);
-			driverRepository2.save(driver);
-			trip.setStatus(TripStatus.CANCELED);
-		}
-
-		/* We are doing all these above things because customer table is not joined with the driver or cab table
-		 * directly, hence cascading will not work for the driver here, therefore, we are making the changes
-		 * by manually, and since driver is parent and cab is child making changes in parent (driver) will
-		 * automatically make changes in child (cab)*/
-
-		//Now we will delete the customer from the repository and as a result of cascading effect trips will also
-		//be deleted
-		customerRepository2.delete(customer);
+		customerRepository2.deleteById(customerId);
 	}
 
 	@Override
@@ -62,57 +41,84 @@ public class CustomerServiceImpl implements CustomerService {
 		//Book the driver with lowest driverId who is free (cab available variable is Boolean.TRUE). If no driver is available, throw "No cab available!" exception
 		//Avoid using SQL query
 
-		List<Driver> driverList = driverRepository2.findAll();
-		Driver driver = null;
-		for(Driver currDriver : driverList){
-			if(currDriver.getCab().getAvailable()){
-				if((driver == null) || (currDriver.getDriverId() < driver.getDriverId())){
-					driver = currDriver;
-				}
+		List<Driver> drivers = new ArrayList<>();
+		drivers = driverRepository2.findAll();
+
+		Driver currDriver = null;
+		for(Driver driver : drivers){
+			if(driver.getCab().getAvailable()){
+				currDriver = driver;
+				break;
 			}
 		}
-		if(driver==null) {
+
+		if(currDriver == null){
 			throw new Exception("No cab available!");
 		}
 
-		TripBooking newTripBooked = new TripBooking();
-		newTripBooked.setCustomer(customerRepository2.findById(customerId).get());
-		newTripBooked.setFromLocation(fromLocation);
-		newTripBooked.setToLocation(toLocation);
-		newTripBooked.setDistanceInKm(distanceInKm);
-		newTripBooked.setStatus(TripStatus.CONFIRMED);
-		newTripBooked.setDriver(driver);
-		int rate = driver.getCab().getPerKmRate();
-		newTripBooked.setBill(distanceInKm*rate);
+		Optional<Customer> customerOptional = customerRepository2.findById(customerId);
 
-		driver.getCab().setAvailable(false);
-		driverRepository2.save(driver);
+		if(!customerOptional.isPresent()){
+			throw new Exception("Customer is not present!");
+		}
 
-		Customer customer = customerRepository2.findById(customerId).get();
-		customer.getTripBookingList().add(newTripBooked);
-		customerRepository2.save(customer);
+		currDriver.getCab().setAvailable(false);
+		Customer currCustomer = customerOptional.get();
 
 
-		tripBookingRepository2.save(newTripBooked);
-		return newTripBooked;
+
+		TripBooking tripBooking = new TripBooking();
+		tripBooking.setFromLocation(fromLocation);
+		tripBooking.setToLocation(toLocation);
+		tripBooking.setDistanceInKm(distanceInKm);
+		tripBooking.setBill(0);
+		tripBooking.setStatus(TripStatus.CONFIRMED);
+		tripBooking.setDriver(currDriver);
+		tripBooking.setCustomer(customerOptional.get());
+
+		List<TripBooking> tripBookings = currDriver.getTripBookingList();
+		tripBookings.add(tripBooking);
+
+		List<TripBooking> tripBookings2 = currCustomer.getTripBookingList();
+		tripBookings2.add(tripBooking);
+
+		customerRepository2.save(currCustomer);
+		driverRepository2.save(currDriver);
+		tripBookingRepository2.save(tripBooking);
+		return tripBooking;
 	}
 
 	@Override
 	public void cancelTrip(Integer tripId){
 		//Cancel the trip having given trip Id and update TripBooking attributes accordingly
-		TripBooking bookedTrip = tripBookingRepository2.findById(tripId).get();
-		bookedTrip.setStatus(TripStatus.CANCELED);
-		bookedTrip.setBill(0);
-		bookedTrip.getDriver().getCab().setAvailable(true);
-		tripBookingRepository2.save(bookedTrip);
+		Optional<TripBooking> tripBookingOptional = tripBookingRepository2.findById(tripId);
+
+		if(!tripBookingOptional.isPresent()){
+			return;
+		}
+
+		TripBooking tripBooking = tripBookingOptional.get();
+		tripBooking.getDriver().getCab().setAvailable(true);
+		tripBooking.setBill(0);
+		tripBooking.setStatus(TripStatus.CANCELED);
+
+		tripBookingRepository2.save(tripBooking);
 	}
 
 	@Override
 	public void completeTrip(Integer tripId){
 		//Complete the trip having given trip Id and update TripBooking attributes accordingly
-		TripBooking bookedTrip = tripBookingRepository2.findById(tripId).get();
-		bookedTrip.setStatus(TripStatus.COMPLETED);
-		bookedTrip.getDriver().getCab().setAvailable(true);
-		tripBookingRepository2.save(bookedTrip);
+		Optional<TripBooking> tripBookingOptional = tripBookingRepository2.findById(tripId);
+
+		if(!tripBookingOptional.isPresent()){
+			return;
+		}
+
+		TripBooking tripBooking = tripBookingOptional.get();
+		tripBooking.setBill(tripBooking.getDriver().getCab().getPerKmRate() * tripBooking.getDistanceInKm());
+		tripBooking.getDriver().getCab().setAvailable(true);
+		tripBooking.setStatus(TripStatus.COMPLETED);
+
+		tripBookingRepository2.save(tripBooking);
 	}
 }

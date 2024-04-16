@@ -1,48 +1,47 @@
 package com.driver.model;
 
+import com.driver.model.TripStatus;
+
 import javax.persistence.*;
 
 @Entity
-@Table(name = "TripBooking")
-public class TripBooking{
+public class TripBooking {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    int tripBookingId;
+    private int tripBookingId;
 
-    String fromLocation;
+    private String fromLocation;
 
-    String toLocation;
+    private String toLocation;
 
-    int distanceInKm;
+    private int distanceInKm;
 
-    TripStatus status;
+    private TripStatus status;
 
-    int bill;
+    private int bill;
 
-
-    //For mapping to customer(parent)
-    @ManyToOne
-    @JoinColumn
-    Customer customer;
-
-    //For mapping to driver(parent)
     @ManyToOne
     @JoinColumn
     Driver driver;
 
-    public TripBooking() {
+    @ManyToOne
+    @JoinColumn
+    Customer customer;
 
+    public TripBooking() {
     }
 
-    public TripBooking(int tripBookingId, String fromLocation, String toLocation, int distanceInKm, TripStatus status, int bill, Customer customer, Driver driver) {
+    public TripBooking(int tripBookingId, String fromLocation, String toLocation, int distanceInKm,
+                       TripStatus status, int bill, Driver driver, Customer customer) {
         this.tripBookingId = tripBookingId;
         this.fromLocation = fromLocation;
         this.toLocation = toLocation;
         this.distanceInKm = distanceInKm;
         this.status = status;
         this.bill = bill;
-        this.customer = customer;
         this.driver = driver;
+        this.customer = customer;
     }
 
     public int getTripBookingId() {
@@ -93,19 +92,19 @@ public class TripBooking{
         this.bill = bill;
     }
 
-    public Customer getCustomer() {
-        return customer;
-    }
-
-    public void setCustomer(Customer customer) {
-        this.customer = customer;
-    }
-
     public Driver getDriver() {
         return driver;
     }
 
     public void setDriver(Driver driver) {
         this.driver = driver;
+    }
+
+    public Customer getCustomer() {
+        return customer;
+    }
+
+    public void setCustomer(Customer customer) {
+        this.customer = customer;
     }
 }

@@ -5,36 +5,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "Driver")
-public class Driver{
+public class Driver {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    int driverId;
+    private int driverId;
 
-    String mobile;
+    private String mobile;
 
-    String password;
+    private String password;
 
-    //For mapping to tripBooking(Child)
-    @OneToMany(mappedBy = "driver", cascade = CascadeType.ALL)
-    List<TripBooking> tripBookingList = new ArrayList<>();
-
-    //For mapping to Cab(Parent)
-    @OneToOne(mappedBy = "driver", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "driver" , cascade = CascadeType.ALL)
     Cab cab;
 
-    public Driver() {
+    @OneToMany(mappedBy = "driver" , cascade = CascadeType.ALL)
+    List<TripBooking> tripBookingList = new ArrayList<>();
 
+    public Driver() {
     }
 
-
-
-    public Driver(int driverId, String mobile, String password, List<TripBooking> tripBookingList, Cab cab) {
+    public Driver(int driverId, String mobile, String password, Cab cab, List<TripBooking> tripBookingList) {
         this.driverId = driverId;
         this.mobile = mobile;
         this.password = password;
-        this.tripBookingList = tripBookingList;
         this.cab = cab;
+        this.tripBookingList = tripBookingList;
     }
 
     public int getDriverId() {
@@ -61,19 +56,19 @@ public class Driver{
         this.password = password;
     }
 
-    public List<TripBooking> getTripBookingList() {
-        return tripBookingList;
-    }
-
-    public void setTripBookingList(List<TripBooking> tripBookingList) {
-        this.tripBookingList = tripBookingList;
-    }
-
     public Cab getCab() {
         return cab;
     }
 
     public void setCab(Cab cab) {
         this.cab = cab;
+    }
+
+    public List<TripBooking> getTripBookingList() {
+        return tripBookingList;
+    }
+
+    public void setTripBookingList(List<TripBooking> tripBookingList) {
+        this.tripBookingList = tripBookingList;
     }
 }
